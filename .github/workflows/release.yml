@@ -25,6 +25,11 @@ jobs:
           git-user-signingkey: true
           git-commit-gpgsign: true
 
+      - name: maven-settings-xml-action
+        uses: whelk-io/maven-settings-xml-action@v20
+        with:
+          servers: '[{ "id": "ossrh", "username": "${{ secrets.OSSRH_USERNAME }}", "password": "${{ secrets.OSSRH_PASSWORD }}" }]'
+
       - name: Set Git user
         run: |
           git config user.name "GitHub Actions"
@@ -34,11 +39,8 @@ jobs:
         run: |
           ./mvnw versions:set -DremoveSnapshot=true
           git commit -am "Prepare for release"
-          ./mvnw clean deploy \
+          ./mvnw deploy \
             -P release \
-            -DskipTests \
-            -DnexusUsername=${{ secrets.OSSRH_USERNAME }} \
-            -DnexusPassword=${{ secrets.OSSRH_PASSWORD }} \
             -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
           ./mvnw versions:set -DnextSnapshot=true
           git commit -am "Update to next snapshot version"
