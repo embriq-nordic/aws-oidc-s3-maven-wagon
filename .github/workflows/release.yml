@@ -44,6 +44,7 @@ jobs:
             -P release \
             -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
           git tag v${VERSION}
+          git push origin v${VERSION}
           ./mvnw versions:set -DnextSnapshot=true
           git commit -am "Update to next snapshot version"
           git push

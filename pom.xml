@@ -5,7 +5,7 @@
     <artifactId>aws-oidc-s3-maven-wagon</artifactId>
     <version>1.1.1-SNAPSHOT</version>
 
-    <name>${artifactId}</name>
+    <name>${project.artifactId}</name>
     <description>
         A Maven Wagon extension that uses the second version of the AWS SDK. That means it supports OIDC which is useful when you set up a trust for your build system push/pull artifacts from S3.
     </description>
