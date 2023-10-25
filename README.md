@@ -8,6 +8,46 @@ when you set up a trust for your build system push/pull artifacts from S3.
 
 It supports OIDC authentication, which the other ones don't.
 
+# How to use
+
+Either add it in the (root) POM
+
+```xml
+<build>
+    <extensions>
+        <extension>
+            <groupId>no.embriq</groupId>
+            <artifactId>aws-oidc-s3-maven-wagon</artifactId>
+            <version>1.1.0</version>
+        </extension>
+    </extensions>
+</build>
+```
+
+**OR** in the `.mvn/extensions.xml` file
+
+```xml
+<?xml version="1.0"?>
+<extensions>
+    <extension>
+        <groupId>no.embriq</groupId>
+        <artifactId>aws-oidc-s3-maven-wagon</artifactId>
+        <version>1.1.0</version>
+    </extension>
+</extensions>
+```
+
+Next, set up your repositories to use the s3 protocol, as shown below:
+
+```xml
+<repositories>
+    <repository>
+        <id>my-s3-repo</id>
+        <url>s3://my-s3-bucket/path</url>
+    </repository>
+</repositories>
+```
+
 # How it works
 
 For pushing and pulling artifacts from S3 it's pretty standard. It uses the AWS S3 SDK to do so. The magic sauce is the 
