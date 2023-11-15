@@ -16,7 +16,7 @@ Either add it in the (root) POM
 <build>
     <extensions>
         <extension>
-            <groupId>no.embriq</groupId>
+            <groupId>io.github.embriq-nordic</groupId>
             <artifactId>aws-oidc-s3-maven-wagon</artifactId>
             <version>1.1.0</version>
         </extension>
@@ -30,7 +30,7 @@ Either add it in the (root) POM
 <?xml version="1.0"?>
 <extensions>
     <extension>
-        <groupId>no.embriq</groupId>
+        <groupId>io.github.embriq-nordic</groupId>
         <artifactId>aws-oidc-s3-maven-wagon</artifactId>
         <version>1.1.0</version>
     </extension>
