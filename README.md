@@ -18,7 +18,7 @@ Either add it in the (root) POM
         <extension>
             <groupId>io.github.embriq-nordic</groupId>
             <artifactId>aws-oidc-s3-maven-wagon</artifactId>
-            <version>1.1.0</version>
+            <version>1.2.0</version>
         </extension>
     </extensions>
 </build>
@@ -32,7 +32,7 @@ Either add it in the (root) POM
     <extension>
         <groupId>io.github.embriq-nordic</groupId>
         <artifactId>aws-oidc-s3-maven-wagon</artifactId>
-        <version>1.1.0</version>
+        <version>1.2.0</version>
     </extension>
 </extensions>
 ```
@@ -47,6 +47,9 @@ Next, set up your repositories to use the s3 protocol, as shown below:
     </repository>
 </repositories>
 ```
+
+# Java version support
+From Java 8 and up _from_ version 1.2.0. In version 1.1.0 and earlier Java 11, or newer, is required.
 
 # How it works
 
