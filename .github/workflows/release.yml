@@ -1,4 +1,4 @@
-name: Maven Release to Nexus OSSRH
+name: Publish to Maven Central
 
 on:
   workflow_dispatch:
@@ -28,14 +28,14 @@ jobs:
       - name: maven-settings-xml-action
         uses: whelk-io/maven-settings-xml-action@v22
         with:
-          servers: '[{ "id": "ossrh", "username": "${{ secrets.OSSRH_USERNAME }}", "password": "${{ secrets.OSSRH_PASSWORD }}" }]'
+          servers: '[{ "id": "central", "username": "${{ secrets.MAVEN_CENTRAL_USER }}", "password": "${{ secrets.MAVEN_CENTRAL_PASSWORD }}" }]'
 
       - name: Set Git user
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
-      - name: Release to Nexus OSSRH
+      - name: Release to Nexus Maven Central
         run: |
           ./mvnw versions:set -DremoveSnapshot=true
           VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2> /dev/null)
