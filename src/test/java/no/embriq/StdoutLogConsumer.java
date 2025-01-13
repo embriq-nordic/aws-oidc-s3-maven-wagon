@@ -2,8 +2,6 @@ package no.embriq;
 
 import org.testcontainers.containers.output.OutputFrame;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 

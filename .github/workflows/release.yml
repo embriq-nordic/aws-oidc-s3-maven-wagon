@@ -40,6 +40,14 @@ jobs:
           ./mvnw versions:set -DremoveSnapshot=true
           VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2> /dev/null)
           sed -i -e "s/<version>.*<\/version>/<version>${VERSION}<\/version>/g" README.md 
+          git commit -am "Prepare for release of ${VERSION}"
+          ./mvnw deploy \
+            -P release \
+            -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
+          git tag v${VERSION}
+          git push origin v${VERSION}
           ./mvnw versions:set -DnextSnapshot=true
+          git commit -am "Update to next snapshot version"
+          git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -17,25 +17,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class S3WagonIntegrationTest {
 
     private MotoContainer motoContainer;
-    private MavenContainer mavenContainer;
 
     @BeforeGroups("deploy_depend")
-    public void setUp() throws Exception {
+    public void setUp() {
         motoContainer = new MotoContainer();
-        mavenContainer = new MavenContainer();
     }
 
     @AfterGroups("deploy_depend")
     public void tearDown() {
         motoContainer.close();
-        mavenContainer.close(); // it should already have died, really
     }
 
     @Test(groups = "deploy_depend")
-    public void testDeploy() {
+    public void testDeploy() throws Exception {
         S3Client s3Client = motoContainer.getS3Client();
+        MavenContainer mavenContainer = new MavenContainer("test-projects/deploy", "mvn deploy");
 
-        mavenContainer.execute("test-projects/deploy", "mvn deploy");
+        mavenContainer.execute();
 
         List<String> inS3Deploy = s3Client.listObjects(r -> r.bucket(Containers.BUCKET).prefix("no/embriq"))
                                           .contents().stream().map(S3Object::key).collect(Collectors.toList());
@@ -48,8 +46,9 @@ public class S3WagonIntegrationTest {
     }
 
     @Test(groups = "deploy_depend", dependsOnMethods = "testDeploy")
-    public void testResolveArtifact() {
-        mavenContainer.execute("test-projects/resolve","mvn compile");
+    public void testResolveArtifact() throws Exception {
+        MavenContainer mavenContainer = new MavenContainer("test-projects/resolve","mvn compile");
+        mavenContainer.execute();
     }
 
 }

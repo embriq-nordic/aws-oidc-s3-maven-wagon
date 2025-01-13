@@ -18,7 +18,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.utils.AttributeMap;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,7 +44,7 @@ public class Containers {
         private final MavenProject wagonMavenProject;
         private final StdoutLogConsumer logConsumer;
 
-        public MavenContainer() throws Exception {
+        public MavenContainer(String projectDirectory, String command) throws Exception {
             wagonMavenProject = MavenPomReader.readPom("pom.xml");
             String artifactCachePath = wagonMavenProject.getGroupId().replaceAll("\\.", "/") + "/"
                     + wagonMavenProject.getArtifactId() + "/"
@@ -76,17 +75,17 @@ public class Containers {
                     .withEnv("AWS_REGION", REGION)
                     .withNetwork(network)
                     .withLogConsumer(logConsumer);
-        }
 
-        public void execute(String projectDirectory, String command) {
             List<String> commandParts = Arrays.stream(command.split(" ")).collect(Collectors.toList());
             commandParts.add(1, "-Dwagon.groupId=" + wagonMavenProject.getGroupId());
             commandParts.add(1, "-Dwagon.artifactId=" + wagonMavenProject.getArtifactId());
             commandParts.add(1, "-Dwagon.version=" + wagonMavenProject.getVersion());
             commandParts.add(1, "-Drepo.url=s3://" + BUCKET);
             commandParts.add(1, "-f=" + projectDirectory + "/pom.xml");
-       //    mavenContainer.withCommand( "ls -la " + containerPath + "*");//commandParts.toArray(new String[0]));
             mavenContainer.withCommand( commandParts.toArray(new String[0]));
+        }
+
+        public void execute() {
             mavenContainer.start();
             await().atMost(Duration.ofMinutes(5)).until(() -> !mavenContainer.isRunning());
 
