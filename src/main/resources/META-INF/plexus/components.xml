@@ -4,7 +4,7 @@
             <role>org.apache.maven.wagon.Wagon</role>
             <role-hint>s3</role-hint>
             <implementation>no.embriq.S3Wagon</implementation>
-            <instantiation-strategy>per-lookup</instantiation-strategy>
+            <instantiation-strategy>singleton</instantiation-strategy>
         </component>
     </components>
 </component-set>

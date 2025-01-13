@@ -58,10 +58,9 @@ Otherwise it will fall back on other methods. This makes it likely to work in a 
 any special configuration.
 [Here](https://github.com/aws/aws-sdk-java-v2/blob/master/core/auth/src/main/java/software/amazon/awssdk/auth/credentials/internal/ProfileCredentialsUtils.java#L110) is how it works
 
-# TODOs
+# Short-comings 
 
-The testing stinks. 
+The OIDC part - the reason this plugin exists - isn't really tested. 
 
-* Firstly - it should actually run Maven rather than relying on the wagon test harness (which isn't any good)
-* Secondly, [Moto](https://github.com/getmoto/moto) (or [Localstack](https://github.com/localstack/localstack) for that matter) does not really 
+* [Moto](https://github.com/getmoto/moto) (or [Localstack](https://github.com/localstack/localstack) for that matter) does not really 
   support assuming roles as a pre-requisite to use AWS services (like S3 in this case). 

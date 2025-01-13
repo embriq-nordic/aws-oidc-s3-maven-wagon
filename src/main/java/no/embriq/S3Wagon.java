@@ -18,12 +18,20 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
+import javax.xml.stream.XMLStreamException;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class S3Wagon extends AbstractWagon {
 
@@ -32,7 +40,7 @@ public class S3Wagon extends AbstractWagon {
     private final S3Client s3Client;
 
     public S3Wagon() {
-        this.s3Client = S3Client.create();
+        this(S3Client.create());
     }
 
     public S3Wagon(S3Client s3Client) {
@@ -45,6 +53,7 @@ public class S3Wagon extends AbstractWagon {
 
     @Override
     protected void closeConnection() {
+
     }
 
     @Override
@@ -108,7 +117,6 @@ public class S3Wagon extends AbstractWagon {
         }
     }
 
-
     @Override
     public boolean resourceExists(String resourceName) throws TransferFailedException, AuthorizationException {
         Repository repository = getRepository();
@@ -125,6 +133,32 @@ public class S3Wagon extends AbstractWagon {
             return false;
         } catch (SdkException e) {
             throw new TransferFailedException("Error occurred while checking if resource " + resourceName + " exists", e);
+        }
+    }
+
+    @Override
+    public List<String> getFileList(String destinationDirectory) throws TransferFailedException, ResourceDoesNotExistException,
+            AuthorizationException {
+
+        Repository repository = getRepository();
+        String bucketName = repository.getHost();
+        String key = createS3Key(destinationDirectory);
+
+        try {
+            ListObjectsResponse listObjectsResponse = s3Client.listObjects(r -> r.bucket(bucketName).prefix(key));
+            return listObjectsResponse.contents().stream().map(S3Object::key)
+                                      .map(k -> k
+                                              .replaceFirst(destinationDirectory, "")
+                                              .replaceFirst("^/", "")
+                                              .replaceAll("/.*$", ""))
+                                      .distinct().collect(Collectors.toList());
+        } catch (NoSuchKeyException e) {
+            throw new ResourceDoesNotExistException("Directory " + destinationDirectory + " does not exist in s3", e);
+        } catch (AwsServiceException e) {
+            handleAwsServiceException(e, new Resource(destinationDirectory));
+            return Collections.emptyList();
+        } catch (SdkException e) {
+            throw new TransferFailedException("Error occurred while listing contents of directory " + destinationDirectory, e);
         }
     }
 
@@ -199,16 +233,4 @@ public class S3Wagon extends AbstractWagon {
         }
     }
 
-    /* there is a bug in the testing framework that expects the event to not really reflects how the file looks.
-     * This forces us to botch the default method
-     *
-    @Override
-    protected void firePutInitiated( Resource resource, File localFile ) {
-        TransferEvent transferEvent =
-                new TransferEvent( this,
-                                   new Resource(resource.getName()),
-                                   TransferEvent.TRANSFER_INITIATED,
-                                   TransferEvent.REQUEST_PUT );
-        transferEventSupport.fireTransferInitiated(transferEvent);
-    }*/
 }
