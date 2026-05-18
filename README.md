@@ -18,7 +18,7 @@ Either add it in the (root) POM
         <extension>
             <groupId>io.github.embriq-nordic</groupId>
             <artifactId>aws-oidc-s3-maven-wagon</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.1</version>
         </extension>
     </extensions>
 </build>
@@ -32,7 +32,7 @@ Either add it in the (root) POM
     <extension>
         <groupId>io.github.embriq-nordic</groupId>
         <artifactId>aws-oidc-s3-maven-wagon</artifactId>
-        <version>1.2.0</version>
+        <version>1.2.1</version>
     </extension>
 </extensions>
 ```
