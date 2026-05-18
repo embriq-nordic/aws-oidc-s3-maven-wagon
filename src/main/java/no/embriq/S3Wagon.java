@@ -47,6 +47,9 @@ public class S3Wagon extends AbstractWagon {
         this.s3Client = s3Client;
     }
 
+    /**
+     * To allow for testing with an S3 mock
+     */
     private static S3Client createS3Client() {
         String endpointOverride = System.getProperty(ENDPOINT_OVERRIDE_PROPERTY);
 
