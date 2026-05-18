@@ -1,5 +1,7 @@
 package no.embriq;
 
+import no.embriq.helpers.MavenPomReader;
+import no.embriq.helpers.MavenProject;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.commons.io.output.TeeWriter;
@@ -37,9 +39,6 @@ public class S3WagonMavenIntegrationTest {
     private static final String REGION = "us-east-1";
     private static final String BUCKET = "bucket";
     private static final int PORT = 5000;
-    private static final String WAGON_GROUP_ID = "io.github.embriq-nordic";
-    private static final String WAGON_ARTIFACT_ID = "aws-oidc-s3-maven-wagon";
-    private static final String WAGON_VERSION = "1.2.0-SNAPSHOT";
 
     private GenericContainer<?> moto;
     private S3Client s3Client;
@@ -73,11 +72,12 @@ public class S3WagonMavenIntegrationTest {
     @Test
     public void mavenDeployUsesS3WagonExtension() throws Exception {
         Path projectRoot = Paths.get(System.getProperty("user.dir"));
+        MavenProject wagonProject = MavenPomReader.readPom(projectRoot.resolve("pom.xml").toString());
         Path localRepository = Files.createTempDirectory(getClass().getSimpleName() + "-m2");
-        installWagonInLocalRepository(projectRoot, localRepository);
+        installWagonInLocalRepository(projectRoot, localRepository, wagonProject);
 
         Path consumerProject = Files.createTempDirectory(getClass().getSimpleName());
-        Files.write(consumerProject.resolve("pom.xml"), consumerPom().getBytes(StandardCharsets.UTF_8));
+        Files.write(consumerProject.resolve("pom.xml"), consumerPom(wagonProject).getBytes(StandardCharsets.UTF_8));
 
         Map<String, String> environment = new HashMap<>();
         environment.put("AWS_ACCESS_KEY_ID", ACCESS_KEY);
@@ -98,7 +98,7 @@ public class S3WagonMavenIntegrationTest {
         s3Client.headObject(r -> r.bucket(BUCKET).key("releases/com/example/wagon-consumer/1.0.0/wagon-consumer-1.0.0.pom"));
     }
 
-    private void installWagonInLocalRepository(Path projectRoot, Path localRepository) throws IOException, InterruptedException {
+    private void installWagonInLocalRepository(Path projectRoot, Path localRepository, MavenProject wagonProject) throws IOException, InterruptedException {
         Path wagonJar = projectRoot.resolve("target/wagon-plugin.jar");
         assertThat(wagonJar).exists();
 
@@ -113,14 +113,21 @@ public class S3WagonMavenIntegrationTest {
         );
 
         assertThat(result.exitCode).as(result.output).isEqualTo(0);
-        assertThat(localRepository.resolve("io/github/embriq-nordic/aws-oidc-s3-maven-wagon/1.2.0-SNAPSHOT/aws-oidc-s3-maven-wagon-1.2.0-SNAPSHOT.jar")).exists();
+        assertThat(localRepository.resolve(localRepositoryPath(wagonProject))).exists();
     }
 
     private String s3Endpoint() {
         return "http://localhost:" + moto.getMappedPort(PORT);
     }
 
-    private static String consumerPom() {
+    private static String localRepositoryPath(MavenProject project) {
+        return project.getGroupId().replace('.', '/')
+                + "/" + project.getArtifactId()
+                + "/" + project.getVersion()
+                + "/" + project.getArtifactId() + "-" + project.getVersion() + ".jar";
+    }
+
+    private static String consumerPom(MavenProject wagonProject) {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                 + "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
                 + "         xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd\">\n"
@@ -132,9 +139,9 @@ public class S3WagonMavenIntegrationTest {
                 + "    <build>\n"
                 + "        <extensions>\n"
                 + "            <extension>\n"
-                + "                <groupId>" + WAGON_GROUP_ID + "</groupId>\n"
-                + "                <artifactId>" + WAGON_ARTIFACT_ID + "</artifactId>\n"
-                + "                <version>" + WAGON_VERSION + "</version>\n"
+                + "                <groupId>" + wagonProject.getGroupId() + "</groupId>\n"
+                + "                <artifactId>" + wagonProject.getArtifactId() + "</artifactId>\n"
+                + "                <version>" + wagonProject.getVersion() + "</version>\n"
                 + "            </extension>\n"
                 + "        </extensions>\n"
                 + "        <plugins>\n"

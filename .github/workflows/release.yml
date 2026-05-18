@@ -39,7 +39,7 @@ jobs:
         run: |
           ./mvnw versions:set -DremoveSnapshot=true
           VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout 2> /dev/null)
-          sed -i -e "s/<version>.*<\/version>/<version>${VERSION}<\/version>/g" README.md 
+          ./scripts/update-readme-version.sh "${VERSION}"
           git commit -am "Prepare for release of ${VERSION}"
           ./mvnw deploy \
             -P release \
