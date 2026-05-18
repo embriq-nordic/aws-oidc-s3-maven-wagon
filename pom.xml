@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.embriq-nordic</groupId>
     <artifactId>aws-oidc-s3-maven-wagon</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2-SNAPSHOT</version>
 
     <name>${project.artifactId}</name>
     <description>
