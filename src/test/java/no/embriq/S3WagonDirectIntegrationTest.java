@@ -1,9 +1,11 @@
 package no.embriq;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.maven.wagon.events.TransferEvent;
+import org.apache.maven.wagon.events.TransferListener;
 import org.apache.maven.wagon.observers.Debug;
 import org.apache.maven.wagon.repository.Repository;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
 import org.testcontainers.utility.DockerImageName;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -23,11 +25,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * It would have been awfully nice to a testing library for this. Unfortunatly the wagon testing harness provided by
+ * It would have been awfully nice to have a testing library for this. Unfortunately the wagon testing harness provided by
  * the wagon people themselves is completely broken. I kinda wonder if they even tried it themselves.
  * So none of the wagon extensions I've seen actually use it.
  */
-public class S3WagonTest {
+public class S3WagonDirectIntegrationTest {
 
     public static final String ACCESS_KEY = "access_key";
     public static final String SECRET_KEY = "secret_key";
@@ -77,21 +79,15 @@ public class S3WagonTest {
 
     @Test
     public void testPushAndPullFiles() throws Exception {
-        // Create a temporary file to push to the S3 bucket
         File sourceFile = tempDir.resolve("test-upload.txt").toFile();
         Files.write(sourceFile.toPath(), "This is a test file".getBytes(StandardCharsets.UTF_8));
 
-        // Push the file to the S3 bucket
         String remoteResourceName = "test-folder/test-upload.txt";
         wagon.put(sourceFile, remoteResourceName);
 
-        // Create another temporary file to download the file from the S3 bucket
         File destinationFile = tempDir.resolve("test-download.txt").toFile();
-
-        // Pull the file from the S3 bucket
         wagon.get(remoteResourceName, destinationFile);
 
-        // Compare the contents of the source and destination files
         String sourceContent = FileUtils.readFileToString(sourceFile, StandardCharsets.UTF_8);
         String destinationContent = FileUtils.readFileToString(destinationFile, StandardCharsets.UTF_8);
         assertThat(sourceContent).isEqualTo(destinationContent);
@@ -99,11 +95,9 @@ public class S3WagonTest {
 
     @Test
     public void testGetIfNewer() throws Exception {
-        // Create a temporary file to push to the S3 bucket
         File originalFile = tempDir.resolve("test-upload.txt").toFile();
         Files.write(originalFile.toPath(), "Content".getBytes(StandardCharsets.UTF_8));
 
-        // Push the file to the S3 bucket
         String remoteResourceName = "test-folder/test-upload.txt";
         long beforeFirstUpload = System.currentTimeMillis() - 1000;
         wagon.put(originalFile, remoteResourceName);
@@ -120,7 +114,6 @@ public class S3WagonTest {
 
     @Test
     public void testListFiles() throws Exception {
-        // Create a temporary file to push to the S3 bucket
         File file = tempDir.resolve("test-upload.txt").toFile();
         Files.write(file.toPath(), "Content".getBytes(StandardCharsets.UTF_8));
 
@@ -131,6 +124,67 @@ public class S3WagonTest {
         List<String> files = wagon.getFileList("dir1");
 
         assertThat(files).contains("dir2", "file.txt");
+    }
+
+    @Test
+    public void reportsDownloadSizeBeforeProgress() throws Exception {
+        File sourceFile = tempDir.resolve("progress-test-upload.txt").toFile();
+        byte[] sourceContent = "This is a test file with enough content to report progress".getBytes(StandardCharsets.UTF_8);
+        Files.write(sourceFile.toPath(), sourceContent);
+
+        String remoteResourceName = "test-folder/progress-test-upload.txt";
+        wagon.put(sourceFile, remoteResourceName);
+
+        TransferRecorder transferRecorder = new TransferRecorder();
+        wagon.addTransferListener(transferRecorder);
+
+        wagon.get(remoteResourceName, tempDir.resolve("progress-test-download.txt").toFile());
+
+        assertThat(transferRecorder.startedContentLength).isEqualTo(sourceContent.length);
+        assertThat(transferRecorder.progressEventType).isEqualTo(TransferEvent.TRANSFER_PROGRESS);
+        assertThat(transferRecorder.progressBytes).isEqualTo(sourceContent.length);
+        assertThat(transferRecorder.completedContentLength).isEqualTo(sourceContent.length);
+    }
+
+    private static class TransferRecorder implements TransferListener {
+        private long startedContentLength;
+        private long completedContentLength;
+        private int progressEventType;
+        private long progressBytes;
+
+        @Override
+        public void transferInitiated(TransferEvent transferEvent) {
+        }
+
+        @Override
+        public void transferStarted(TransferEvent transferEvent) {
+            if (transferEvent.getRequestType() == TransferEvent.REQUEST_GET) {
+                startedContentLength = transferEvent.getResource().getContentLength();
+            }
+        }
+
+        @Override
+        public void transferProgress(TransferEvent transferEvent, byte[] buffer, int length) {
+            if (transferEvent.getRequestType() == TransferEvent.REQUEST_GET) {
+                progressEventType = transferEvent.getEventType();
+                progressBytes += length;
+            }
+        }
+
+        @Override
+        public void transferCompleted(TransferEvent transferEvent) {
+            if (transferEvent.getRequestType() == TransferEvent.REQUEST_GET) {
+                completedContentLength = transferEvent.getResource().getContentLength();
+            }
+        }
+
+        @Override
+        public void transferError(TransferEvent transferEvent) {
+        }
+
+        @Override
+        public void debug(String message) {
+        }
     }
 
 }

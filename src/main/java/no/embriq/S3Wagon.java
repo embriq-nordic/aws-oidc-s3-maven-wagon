@@ -12,7 +12,7 @@ import org.codehaus.plexus.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Collections;
@@ -33,15 +34,33 @@ import java.util.stream.Collectors;
 public class S3Wagon extends AbstractWagon {
 
     private static final Logger logger = LoggerFactory.getLogger(S3Wagon.class);
+    private static final String ENDPOINT_OVERRIDE_PROPERTY = "s3.wagon.endpoint";
+    private static final String ENDPOINT_OVERRIDE_ENV = "S3_WAGON_ENDPOINT";
 
     private final S3Client s3Client;
 
     public S3Wagon() {
-        this(S3Client.create());
+        this(createS3Client());
     }
 
     public S3Wagon(S3Client s3Client) {
         this.s3Client = s3Client;
+    }
+
+    private static S3Client createS3Client() {
+        String endpointOverride = System.getProperty(ENDPOINT_OVERRIDE_PROPERTY);
+
+        if (StringUtils.isEmpty(endpointOverride)) {
+            endpointOverride = System.getenv(ENDPOINT_OVERRIDE_ENV);
+        }
+
+        if (StringUtils.isEmpty(endpointOverride)) {
+            return S3Client.create();
+        }
+
+        return S3Client.builder()
+                       .endpointOverride(URI.create(endpointOverride))
+                       .build();
     }
 
     @Override
@@ -62,27 +81,19 @@ public class S3Wagon extends AbstractWagon {
 
         try {
             fireGetInitiated(resource, destination);
-            fireGetStarted(resource, destination);
 
-            ResponseBytes<GetObjectResponse> responseBytes = s3Client.getObjectAsBytes(r -> r.bucket(bucket).key(key));
-            byte[] objectData = responseBytes.asByteArray();
+            ResponseInputStream<GetObjectResponse> response = s3Client.getObject(r -> r.bucket(bucket).key(key));
+            resource.setContentLength(response.response().contentLength());
+            resource.setLastModified(response.response().lastModified().toEpochMilli());
 
-            // You can use fireTransferProgress() for reporting progress
-            fireTransferProgress(new TransferEvent(this, resource, TransferEvent.TRANSFER_COMPLETED, TransferEvent.REQUEST_GET),
-                                 objectData, objectData.length);
-
-            Files.write(destination.toPath(), objectData);
-
-            resource.setContentLength(objectData.length);
-            resource.setLastModified(responseBytes.response().lastModified().toEpochMilli());
-            fireGetCompleted(resource, destination);
+            getTransfer(resource, destination, response);
         } catch (NoSuchKeyException e) {
             fireTransferError(resource, e, TransferEvent.REQUEST_GET);
             throw new ResourceDoesNotExistException("Resource " + resourceName + " does not exist in the repository", e);
         } catch (AwsServiceException e) {
             fireTransferError(resource, e, TransferEvent.REQUEST_GET);
             handleAwsServiceException(e, resource);
-        } catch (IOException | SdkException e) {
+        } catch (SdkException e) {
             fireTransferError(resource, e, TransferEvent.REQUEST_GET);
             throw new TransferFailedException("Error occurred while transferring resource " + resourceName, e);
         }
@@ -178,11 +189,9 @@ public class S3Wagon extends AbstractWagon {
             if (lastModified.toEpochMilli() > timestamp) {
                 logger.info("Resource is newer, downloading: {}", resourceName);
                 get(resourceName, destination);
-                fireGetCompleted(resource, destination);
                 return true;
             } else {
                 logger.info("Resource is not newer: {}", resourceName);
-                fireGetCompleted(resource, destination);
                 return false;
             }
         } catch (NoSuchKeyException e) {
