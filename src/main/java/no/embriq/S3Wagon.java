@@ -89,6 +89,17 @@ public class S3Wagon extends AbstractWagon {
             resource.setContentLength(response.response().contentLength());
             resource.setLastModified(response.response().lastModified().toEpochMilli());
 
+            if (logger.isDebugEnabled())
+            {
+                final String output =
+                        "resourceName=" + resourceName
+                        + " destination=" + destination
+                        + " resource.inspect()=" + resource.inspect()
+                        + " response.toString()=" + response.toString()
+                        ;
+                logger.debug(output);
+            }
+
             getTransfer(resource, destination, response);
         } catch (NoSuchKeyException e) {
             fireTransferError(resource, e, TransferEvent.REQUEST_GET);
