@@ -93,6 +93,8 @@ public class S3Wagon extends AbstractWagon {
             {
                 final String output =
                         "resourceName=" + resourceName
+                        + " key=" + key
+                        + " bucket=" + bucket
                         + " destination=" + destination
                         + " resource.inspect()=" + resource.inspect()
                         + " response.toString()=" + response.toString()
