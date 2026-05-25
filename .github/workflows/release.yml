@@ -6,6 +6,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,8 +46,16 @@ jobs:
           ./mvnw deploy \
             -P release \
             -Dgpg.passphrase=${{ secrets.GPG_PASSPHRASE }}
-          git tag v${VERSION}
-          git push origin v${VERSION}
+          NOTES=$(gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="v${VERSION}" \
+            -f target_commitish="$(git rev-parse HEAD)" \
+            --jq .body)
+          printf 'Release v%s\n\n%s\n' "${VERSION}" "${NOTES}" | git tag -a "v${VERSION}" -F -
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" --notes "${NOTES}" --title "v${VERSION}"
           ./mvnw versions:set -DnextSnapshot=true
           git commit -am "Update to next snapshot version"
           git push
